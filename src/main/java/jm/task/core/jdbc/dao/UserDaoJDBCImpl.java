@@ -8,92 +8,82 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UserDaoJDBCImpl implements UserDao {
-    private final Connection connection = Util.getConnection();
-
-    public UserDaoJDBCImpl() {
-    }
+    PreparedStatement statement;
+    public UserDaoJDBCImpl() {}
 
     public void createUsersTable() {
-        try (Statement statement = connection.createStatement()) {
-            statement.executeUpdate("CREATE TABLE IF NOT EXISTS mydbtest.users" +
-                    "(id mediumint auto_increment," +
-                    " name VARCHAR(45), " +
-                    "lastname VARCHAR(45), " +
-                    "age tinyint, " +
+        try (Connection connection = Util.getConnection()) {
+            statement = connection.prepareStatement("CREATE TABLE IF NOT EXISTS users" +
+                    "(id BIGINT NOT NULL AUTO_INCREMENT, " +
+                    "name VARCHAR(50) NOT NULL, " +
+                    "lastname VARCHAR(50) NOT NULL, " +
+                    "age TINYINT NOT NULL, " +
                     "PRIMARY KEY (id))");
-            System.out.println("Таблица создалась");
-
+            statement.executeUpdate();
+            System.out.println("Таблица создана.");
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.out.println("Таблица не создана или уже существует.");
         }
     }
 
     public void dropUsersTable() {
-        try (Statement statement = connection.createStatement()) {
-            statement.executeUpdate("Drop table if exists mydbtest.users");
-            System.out.println("Таблица удалилась");
-
+        try (Connection connection = Util.getConnection()) {
+            statement = connection.prepareStatement("DROP TABLE IF EXISTS `mydbtest`.`users`;");
+            statement.executeUpdate();
+            System.out.println("Таблица удалена.");
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.out.println("Таблица не удалена или такой таблицы не существует.");
         }
     }
 
-    public void saveUser(String name, String lastName, byte age) {
-        String mysql = "INSERT INTO mydbtest.users(name, lastname, age) VALUES(?,?,?)";
-        try (PreparedStatement preparedStatement = connection.prepareStatement(mysql)) {
-            preparedStatement.setString(1, name);
-            preparedStatement.setString(2,lastName);
-            preparedStatement.setByte(3,age);
-            preparedStatement.executeUpdate();
-            System.out.println("Новый юзер добавлен в базу данных" + name);
-
+    public void saveUser(String name, String lastname, byte age) {
+        try (Connection connection = Util.getConnection()) {
+            statement = connection.prepareStatement("INSERT INTO users (name, lastname, age) VALUES (?, ?, ?);");
+            statement.setString(1, name);
+            statement.setString(2, lastname);
+            statement.setByte(3, age);
+            statement.executeUpdate();
+            System.out.println("User с именем - " + name + " добавлен в базу данных.");
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.out.println("Пользователь не добавлен в таблицу.");
         }
     }
 
     public void removeUserById(long id) {
-        try (Statement statement = connection.createStatement()) {
-            String mysql = "DELETE FROM mydbtest.users where id";
-            statement.executeUpdate(mysql);
-            System.out.println("Юзер удален");
-
+        try (Connection connection = Util.getConnection()) {
+            statement = connection.prepareStatement("DELETE FROM users WHERE id = ?");
+            statement.setLong(1, id);
+            statement.executeUpdate();
+            System.out.println("Пользователь по id = " + id + " удален из таблицы.");
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.out.println("Ошибка при удалении пользователя или пользователя с таким id не существует.");
         }
     }
 
     public List<User> getAllUsers() {
-        List<User> allUser = new ArrayList<>();
-        String mysql = "SELECT id, name, lastName, age from mydbtest.users";
-
-        try (Statement statement = connection.createStatement()) {
-            ResultSet resultSet = statement.executeQuery(mysql);
-
-            while (resultSet.next()) {
+        List<User> list = new ArrayList<>();
+        try (Connection connection = Util.getConnection()) {
+            statement = connection.prepareStatement("SELECT * FROM users");
+            ResultSet result = statement.executeQuery();
+            while (result.next()) {
                 User user = new User();
-                user.setId(resultSet.getLong("id"));
-                user.setName(resultSet.getString("name"));
-                user.setLastName(resultSet.getString("lastName"));
-                user.setAge(resultSet.getByte("age"));
-                allUser.add(user);
+                user.setId(result.getLong("id"));
+                user.setName(result.getString("name"));
+                user.setLastName(result.getString("lastname"));
+                user.setAge(result.getByte("age"));
+                list.add(user);
             }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return allUser;
+        } catch (SQLException ignored) {}
+        return list;
     }
 
     public void cleanUsersTable() {
-        String mysql = "DELETE FROM mydbtest.users";
-        try (Statement statement = connection.createStatement()) {
-            statement.executeUpdate(mysql);
-            System.out.println("Таблица очищена");
+        try (Connection connection = Util.getConnection()) {
+            statement = connection.prepareStatement("TRUNCATE `mydbtest`.`users`;");
+            statement.executeUpdate();
+            System.out.println("Таблица успешно очищена.");
         } catch (SQLException e) {
-            e.printStackTrace();
-            System.out.println("Не удалось очистить");
+            System.out.println("Таблица не очищена.");
         }
-
     }
 }
